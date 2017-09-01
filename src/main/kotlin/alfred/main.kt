@@ -25,20 +25,17 @@ class SshMetricsProdCommand {
     }
 }
 
-class SshVersace {
-    /*
-    * pushd $ENVIRONMENT_DIR
-    * export BOSH_ENVIRONMENT=$(bbl director-address)
-    * export BOSH_CA_CERT=$(bbl director-ca-cert)
-    * export BOSH_CLIENT=$(bbl director-username)
-    * export BOSH_CLIENT_SECRET=$(bbl director-password)
-    * export BOSH_GW_USER=jumpbox
-    * export BOSH_GW_HOST=$(bbl director-address | sed -e "s/^https:\/\///" -e "s/:25555$//")
-    * bbl ssh-key > /tmp/ssh.pem
-    * chmod 600 /tmp/ssh.pem
-    * export BOSH_GW_PRIVATE_KEY=/tmp/ssh.pem
-    * */
+data class BoshConfig(
+        val directorAddress: String, //$(bbl director-address)
+        val directorCaCert: String, //$(bbl director-ca-cert)
+        val directorUsername: String, //$(bbl director-username)
+        val directorPassword: String, //$(bbl director-password)
+        val gatewayUser: String, //jumpbox
+        val gatewayHost: String, //$(bbl director-address | sed -e "s/^https:\/\///" -e "s/:25555$//")
+        val gatewayPrivateKey: String //bbl ssh-key > /tmp/ssh.pem
+)
 
+class SshVersace {
     fun execute(vm: String) {
         val process = ProcessBuilder()
                 .command(listOf("bosh2", "-e", "versace", "-d", "deployment", "ssh", vm))
