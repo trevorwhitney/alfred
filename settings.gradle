@@ -1,1 +1,7 @@
 rootProject.name = "alfred"
+
+//Applications
+include ":applications:alfred"
+
+//Components
+include ":components:metrics-prod"

@@ -1,0 +1,24 @@
+apply from: "$project.rootDir/kotlin.gradle"
+apply plugin: 'application'
+
+version = "0.0.1"
+
+mainClassName = 'alfred.MainKt'
+jar {
+    manifest {
+        attributes 'Main-Class': "$mainClassName"
+    }
+
+    // This line of code recursively collects and copies all of a project's files
+    // and adds them to the JAR itself. One can extend this task, to skip certain
+    // files or particular types at will
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+}
+
+dependencies {
+    compile 'com.beust:jcommander:1.72'
+}
+
+task version {
+    println "$version"
+}
