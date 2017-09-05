@@ -13,7 +13,7 @@ class Butler(val name: String) {
     init {
         scanner.addIncludeFilter(AnnotationTypeFilter(CommandCollection::class.java))
 
-        scanner.findCandidateComponents("metricsprod").forEach {
+        scanner.findCandidateComponents("metrics").forEach {
             val clazz = Class.forName(it.beanClassName)
             val instance = clazz.newInstance()
             val commandCollection = AnnotationUtils.findAnnotation(clazz, CommandCollection::class.java)

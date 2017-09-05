@@ -2,10 +2,10 @@
 
 ./gradlew assemble 2>&1 > /dev/null
 version=`./gradlew version | grep ^[0-9]`
-cp "applications/alfred/build/libs/alfred-$version.jar" "/usr/local/lib/alfred-$version.jar"
+cp "applications/alfred/build/libs/alfred-$version.jar" "/usr/local/lib/alfred.jar"
 
 cat <<INSTALL > /usr/local/bin/alfred
-PROD_HOST=${PROD_HOST} java -jar "/usr/local/lib/alfred-${version}.jar" "\${@}"
+PROD_HOST=${PROD_HOST} java -jar "/usr/local/lib/alfred.jar" "\${@}"
 INSTALL
 
 chmod a+x /usr/local/bin/alfred
