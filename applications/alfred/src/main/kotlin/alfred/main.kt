@@ -1,85 +1,143 @@
 package alfred
 
-import com.beust.jcommander.JCommander
+import butler.CommandCollection
 import com.beust.jcommander.Parameter
-import com.beust.jcommander.ParameterException
-
+import metricsprod.MetricsProd
+import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider
+import org.springframework.core.annotation.AnnotationUtils
+import org.springframework.core.type.filter.AnnotationTypeFilter
 
 class GlobalArgs {}
 
-class SshMetricsProdCommand {
+fun sshMetricsProd(username: String, vm: String) {
+    val prodHost = System.getenv("PROD_HOST")
+    val process = ProcessBuilder()
+        .command(listOf("ssh", "$username@$prodHost", "-t", "bash -l -c \"direnv allow && gobosh -e prod -d pcf-metrics-prod ssh $vm\""))
+        .inheritIO()
+        .start()
+
+    process.waitFor()
+}
+
+fun sshVersace(username: String, vm: String) {
+    TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+}
+
+class SshCommand {
+    @Parameter(description = "Environment VM is in")
+    var environment: String? = null
+
     @Parameter(names = arrayOf("--username", "-u"), description = "Your username for prod", required = true)
     var username: String? = null
 
     @Parameter(names = arrayOf("-vm"), description = "VM to SSH to", required = true)
     var vm: String? = null
 
-    fun execute(username: String, vm: String) {
-        val prodHost = System.getenv("PROD_HOST")
-        val process = ProcessBuilder()
-                .command(listOf("ssh", "$username@$prodHost", "-t", "bash -l -c \"direnv allow && gobosh -e prod -d pcf-metrics-prod ssh $vm\""))
-                .inheritIO()
-                .start()
-
-        process.waitFor()
+    fun expandShorthandEnv(): String? {
+        return when (environment) {
+            "mp" -> "metrics-prod"
+            else -> environment
+        }
     }
 }
 
 data class BoshConfig(
-        val directorAddress: String, //$(bbl director-address)
-        val directorCaCert: String, //$(bbl director-ca-cert)
-        val directorUsername: String, //$(bbl director-username)
-        val directorPassword: String, //$(bbl director-password)
-        val gatewayUser: String, //jumpbox
-        val gatewayHost: String, //$(bbl director-address | sed -e "s/^https:\/\///" -e "s/:25555$//")
-        val gatewayPrivateKey: String //bbl ssh-key > /tmp/ssh.pem
+    val directorAddress: String, //$(bbl director-address)
+    val directorCaCert: String, //$(bbl director-ca-cert)
+    val directorUsername: String, //$(bbl director-username)
+    val directorPassword: String, //$(bbl director-password)
+    val gatewayUser: String, //jumpbox
+    val gatewayHost: String, //$(bbl director-address | sed -e "s/^https:\/\///" -e "s/:25555$//")
+    val gatewayPrivateKey: String //bbl ssh-key > /tmp/ssh.pem
 )
 
 class SshVersace {
     fun execute(vm: String) {
         val process = ProcessBuilder()
-                .command(listOf("bosh2", "-e", "versace", "-d", "deployment", "ssh", vm))
-                .inheritIO()
-                .start()
+            .command(listOf("bosh2", "-e", "versace", "-d", "deployment", "ssh", vm))
+            .inheritIO()
+            .start()
 
         process.waitFor()
     }
 }
 
+enum class Environment(environment: String) {
+    METRICS_PROD("metrics-prod") {
+        override fun ssh(username: String, vm: String) {
+            sshMetricsProd(username, vm)
+        }
+    },
+    VERSACE("versace") {
+        override fun ssh(username: String, vm: String) {
+            sshVersace(username, vm)
+        }
+    };
+
+    abstract fun ssh(username: String, vm: String)
+}
+
+
 fun main(args: Array<String>) {
-    val sshMetricsProdCommand = SshMetricsProdCommand()
+    val scanner = ClassPathScanningCandidateComponentProvider(false)
 
-    val jc = JCommander
-            .newBuilder()
-            .addObject(GlobalArgs())
-            .addCommand("ssh-metrics-prod", sshMetricsProdCommand, "smp")
-            .build()
+    scanner.addIncludeFilter(AnnotationTypeFilter(CommandCollection::class.java))
 
-    jc.programName = "Alfred"
-    try {
-        jc.parse(*args)
-    } catch (e: ParameterException) {
-        jc.usage()
-        //TODO: move this to a debug mode
-        e.printStackTrace()
-        System.exit(1)
+    scanner.findCandidateComponents("metricsprod").forEach {
+        println(it.beanClassName)
+        val clazz = Class.forName(it.beanClassName)
+        val commandCollection = AnnotationUtils.findAnnotation(clazz, CommandCollection::class.java)
+        val collectionNames = AnnotationUtils.getValue(commandCollection, "names")
+        val methods = clazz.declaredMethods
+
+        methods.map {
+            it.isAnnotationPresent(SshCommand::class.java)
+        }
+
+        println("Declared Methods: $methods")
     }
 
-    when (jc.parsedCommand) {
-        "ssh-metrics-prod" -> {
-            val username = sshMetricsProdCommand.username
-            val vm = sshMetricsProdCommand.vm
 
-            if (username === null || vm === null) {
-                jc.usage()
-                System.exit(1)
-            }
-
-            sshMetricsProdCommand.execute(username!!, vm!!)
-        }
-        else -> {
-            jc.usage()
-            System.exit(1)
-        }
-    }
+//    val sshCommand = SshCommand()
+//
+//    val jc = JCommander
+//        .newBuilder()
+//        .addObject(GlobalArgs())
+//        .addCommand("ssh", sshCommand)
+//        .build()
+//
+//    jc.programName = "Alfred"
+//    try {
+//        jc.parse(*args)
+//    } catch (e: ParameterException) {
+//        jc.usage()
+//        //TODO: move this to a debug mode
+//        e.printStackTrace()
+//        return System.exit(1)
+//    }
+//
+//    when (jc.parsedCommand) {
+//        "ssh" -> {
+//            val env = sshCommand.expandShorthandEnv()
+//            if (env === null) {
+//                jc.usage()
+//                return System.exit(1)
+//            }
+//
+//            val environment = Environment.valueOf(env)
+//            val username = sshCommand.username
+//            val vm = sshCommand.vm
+//
+//            if (username === null || vm === null) {
+//                jc.usage()
+//                return System.exit(1)
+//            }
+//
+//            environment.ssh(username, vm)
+//        }
+//        else -> {
+//            jc.usage()
+//            System.exit(1)
+//        }
+//    }
 }

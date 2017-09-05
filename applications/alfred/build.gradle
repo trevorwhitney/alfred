@@ -16,7 +16,11 @@ jar {
 }
 
 dependencies {
+    compile project(":components:butler")
+    compile project(":components:metrics-prod")
     compile 'com.beust:jcommander:1.72'
+    compile "org.springframework:spring-core:$springVersion"
+    compile "org.springframework:spring-context:$springVersion"
 }
 
 task version {

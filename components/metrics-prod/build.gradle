@@ -1,0 +1,5 @@
+apply from: "$project.rootDir/kotlin.gradle"
+
+dependencies {
+    compile project(":components:butler")
+}
