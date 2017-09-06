@@ -11,18 +11,18 @@ class Butler(val name: String) {
     private final val scanner = ClassPathScanningCandidateComponentProvider(false)
 
     init {
-        scanner.addIncludeFilter(AnnotationTypeFilter(CommandCollection::class.java))
+        scanner.addIncludeFilter(AnnotationTypeFilter(BoshEnvironment::class.java))
 
         scanner.findCandidateComponents("metrics").forEach {
             val clazz = Class.forName(it.beanClassName)
             val instance = clazz.newInstance()
-            val commandCollection = AnnotationUtils.findAnnotation(clazz, CommandCollection::class.java)
+            val commandCollection = AnnotationUtils.findAnnotation(clazz, BoshEnvironment::class.java)
             val collectionNames = AnnotationUtils.getValue(commandCollection, "names") as Array<String>
             val methods = clazz.declaredMethods
 
             methods.map {
-                val sshCommand = AnnotationUtils.getAnnotation(it, SshCommand::class.java)
-                val boshCommand = AnnotationUtils.getAnnotation(it, BoshCommand::class.java)
+                val sshCommand = AnnotationUtils.getAnnotation(it, Ssh::class.java)
+                val boshCommand = AnnotationUtils.getAnnotation(it, Bosh::class.java)
 
                 val parameterTypes = it.parameterTypes
 

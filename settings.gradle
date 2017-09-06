@@ -4,5 +4,6 @@ rootProject.name = "alfred"
 include ":applications:alfred"
 
 //Components
+include ":components:bosh"
 include ":components:butler"
 include ":components:metrics"
