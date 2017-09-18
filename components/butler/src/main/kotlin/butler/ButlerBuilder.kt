@@ -3,10 +3,30 @@ package butler
 import com.beust.jcommander.JCommander
 import com.beust.jcommander.ParameterException
 
+data class EnvironmentInfo(
+    val longName: String,
+    val shortName: String,
+    var supportsSsh: Boolean = false,
+    var supportsBosh: Boolean = false
+)
+
+//TODO: make list of names a tuple
+fun buildEnvironmentInfo(names: List<String>): EnvironmentInfo {
+    val longName = names.fold("", fun(acc: String, string: String): String {
+        return if (acc.length > string.length) acc else string
+    })
+
+    return EnvironmentInfo(
+        longName = longName,
+        shortName = "foo" //TODO: fix
+    )
+}
+
 class ButlerBuilder {
     var name: String? = null
     private val sshCommands = mutableMapOf<String, (String, String?) -> Unit>()
     private val boshCommands = mutableMapOf<String, (String, String?) -> Unit>()
+    private val environments = mutableMapOf<String, MutableList<String>>()
 
     fun registerSsh(environmentNames: Array<String>, sshCommand: (String, String?) -> Unit) {
         environmentNames.forEach {
@@ -16,6 +36,28 @@ class ButlerBuilder {
 
     private fun registerSsh(environmentName: String, sshCommand: (String, String?) -> Unit) {
         sshCommands.put(environmentName, sshCommand)
+        if (environments.containsKey(environmentName)) {
+            environments[environmentName]?.add("ssh")
+            return
+        }
+
+        environments[environmentName] = mutableListOf("ssh")
+    }
+
+    fun registerBosh(environmentNames: Array<String>, boshMethod: (String, String?) -> Unit) {
+        environmentNames.forEach {
+            registerBosh(it, boshMethod)
+        }
+    }
+
+    private fun registerBosh(environmentName: String, boshMethod: (String, String?) -> Unit) {
+        boshCommands.put(environmentName, boshMethod)
+        if (environments.containsKey(environmentName)) {
+            environments[environmentName]?.add("bosh")
+            return
+        }
+
+        environments[environmentName] = mutableListOf("bosh")
     }
 
     fun build(): (args: Array<String>) -> Unit {
@@ -120,15 +162,5 @@ class ButlerBuilder {
 
         command(vm, sshOptions.username)
         return true
-    }
-
-    fun registerBosh(environmentNames: Array<String>, boshMethod: (String, String?) -> Unit) {
-        environmentNames.forEach {
-            registerBosh(it, boshMethod)
-        }
-    }
-
-    private fun registerBosh(environmentName: String, boshMethod: (String, String?) -> Unit) {
-        boshCommands.put(environmentName, boshMethod)
     }
 }
