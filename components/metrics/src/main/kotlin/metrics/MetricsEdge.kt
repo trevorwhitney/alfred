@@ -1,5 +1,6 @@
 package metrics
 
+import bosh.buildAndWaitForRemoteBoshProcess
 import butler.Bosh
 import butler.BoshEnvironment
 import butler.Ssh
@@ -8,25 +9,20 @@ import butler.Ssh
 class MetricsEdge {
     @Ssh
     fun ssh(vm: String, username: String) {
-        val prodHost = System.getenv("PROD_HOST")
-        val command = listOf("ssh", "$username@$prodHost", "-t", "bash -l -c \"direnv allow && gobosh -e prod -d pcf-metrics-edge ssh $vm\"")
-        val process = ProcessBuilder()
-            .command(command)
-            .inheritIO()
-            .start()
-
-        process.waitFor()
+        buildAndWaitForRemoteBoshProcess(
+            username,
+            System.getenv("PROD_HOST"),
+            prodRemoteCommand("pcf-metrics-edge", "ssh $vm")
+        )
     }
 
     @Bosh
     fun bosh(boshCommand: String, username: String) {
-        val prodHost = System.getenv("PROD_HOST")
-        val command = listOf("ssh", "$username@$prodHost", "-t", "bash -l -c \"direnv allow && gobosh -e prod -d pcf-metrics-edge $boshCommand\"")
-        val process = ProcessBuilder()
-            .command(command)
-            .inheritIO()
-            .start()
+        buildAndWaitForRemoteBoshProcess(
+            username,
+            System.getenv("PROD_HOST"),
+            prodRemoteCommand("pcf-metrics-edge", boshCommand)
+        )
 
-        process.waitFor()
     }
 }
