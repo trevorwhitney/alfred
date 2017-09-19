@@ -18,7 +18,8 @@ class Butler(val name: String) {
             val clazz = Class.forName(it.beanClassName)
             val instance = clazz.newInstance()
             val commandCollection = AnnotationUtils.findAnnotation(clazz, BoshEnvironment::class.java)
-            val environmentAliases = AnnotationUtils.getValue(commandCollection, "names") as Array<String>
+            val environmentName: String = AnnotationUtils.getValue(commandCollection, "name").toString()
+            val environmentNickname: String = AnnotationUtils.getValue(commandCollection, "nickname").toString()
             val methods = clazz.declaredMethods
 
             methods.map {
@@ -28,54 +29,52 @@ class Butler(val name: String) {
                 val parameterTypes = it.parameterTypes
 
                 if (sshCommand !== null) {
-                    addSshMethod(it, environmentAliases, instance)
+                    addSshMethod(it, environmentName, environmentNickname, instance)
                 } else if (boshCommand !== null) {
-                    addBoshMethod(it, environmentAliases, instance)
+                    addBoshMethod(it, environmentName, environmentNickname, instance)
                 }
             }
         }
     }
 
-    private fun addBoshMethod(boshMethod: Method, collectionNames: Array<String>, instance: Any?) {
+    private fun addBoshMethod(boshMethod: Method, environmentName: String, environmentNickname: String, instance: Any?) {
         val parameterTypes = boshMethod.parameterTypes
         val isRemoteBoshCommand = boshMethod.parameterCount == 2
             && parameterTypes[0] == String::class.java
             && parameterTypes[0] == String::class.java
-        val environments = collectionNames.joinToString(", ")
 
-        builder.registerBosh(collectionNames, fun(boshCommand: String, username: String?): Unit {
+        builder.registerBosh(environmentName, environmentNickname, fun(boshCommand: String, username: String?): Unit {
             if (isRemoteBoshCommand) {
                 if (username !== null) {
                     boshMethod.invoke(instance, boshCommand, username)
                 } else {
-                    throw IncorrectUsageException("Bosh command for environment: [$environments] requires a username")
+                    throw IncorrectUsageException("Bosh command for $environmentName environment requires a username")
                 }
             } else if (parameterTypes[0] == String::class.java && boshMethod.parameterCount == 1) {
                 boshMethod.invoke(instance, boshCommand)
             } else {
-                throw IncorrectUsageException("Bosh command definition for environment: [$environments] must take a bosh command")
+                throw IncorrectUsageException("Bosh command definition for $environmentName environment must take a bosh command")
             }
         })
     }
 
-    private fun addSshMethod(sshMethod: Method, collectionNames: Array<String>, instance: Any?) {
+    private fun addSshMethod(sshMethod: Method, environmentName: String, environmentNickname: String, instance: Any?) {
         val parameterTypes = sshMethod.parameterTypes
         val isRemoteSshCommand = sshMethod.parameterCount == 2
             && parameterTypes[0] == String::class.java
             && parameterTypes[0] == String::class.java
-        val environments = collectionNames.joinToString(", ")
 
-        builder.registerSsh(collectionNames, fun(vm: String, username: String?): Unit {
+        builder.registerSsh(environmentName, environmentNickname, fun(vm: String, username: String?): Unit {
             if (isRemoteSshCommand) {
                 if (username !== null) {
                     sshMethod.invoke(instance, vm, username)
                 } else {
-                    throw IncorrectUsageException("Ssh command for environment: [$environments] requires a username")
+                    throw IncorrectUsageException("Ssh command for $environmentName environment requires a username")
                 }
             } else if (parameterTypes[0] == String::class.java && sshMethod.parameterCount == 1) {
                 sshMethod.invoke(instance, vm)
             } else {
-                throw IncorrectUsageException("Ssh command definition for environment: [$environments] must at least take a VM name")
+                throw IncorrectUsageException("Ssh command definition for $environmentName environment must at least take a VM name")
             }
         })
     }

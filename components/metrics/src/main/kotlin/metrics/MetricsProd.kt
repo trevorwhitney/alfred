@@ -4,7 +4,7 @@ import butler.Bosh
 import butler.BoshEnvironment
 import butler.Ssh
 
-@BoshEnvironment(names = arrayOf("metrics-prod", "mp"))
+@BoshEnvironment("metrics-prod", nickname = "mp")
 class MetricsProd {
     @Ssh
     fun ssh(vm: String, username: String) {

@@ -10,7 +10,7 @@ import java.nio.file.Paths
 import java.nio.file.attribute.PosixFilePermission
 import java.util.HashSet
 
-@BoshEnvironment(names = arrayOf("metrics-14", "m14"))
+@BoshEnvironment("metrics-15", nickname = "m15")
 class MetricsOneFive {
     @Ssh
     fun ssh(vm: String) {

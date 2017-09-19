@@ -12,7 +12,7 @@ import java.util.HashSet
 
 
 
-@BoshEnvironment(names = arrayOf("metrics-14", "m14"))
+@BoshEnvironment("metrics-14", nickname = "m14")
 class MetricsOneFour {
     @Ssh
     fun ssh(vm: String) {

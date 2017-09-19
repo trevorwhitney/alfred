@@ -3,29 +3,68 @@ package butler
 import com.beust.jcommander.JCommander
 import com.beust.jcommander.ParameterException
 
+data class EnvironmentInfo(
+    val name: String,
+    val nickname: String,
+    var supportsSsh: Boolean = false,
+    var supportsBosh: Boolean = false
+)
+
+fun buildEnvironmentInfo(name: String, nickname: String): EnvironmentInfo {
+    return EnvironmentInfo(
+        name = name,
+        nickname = nickname
+    )
+}
+
+typealias SshFunction = (String, String?) -> Unit
+typealias BoshFunction = (String, String?) -> Unit
+
 class ButlerBuilder {
     var name: String? = null
-    private val sshCommands = mutableMapOf<String, (String, String?) -> Unit>()
-    private val boshCommands = mutableMapOf<String, (String, String?) -> Unit>()
+    private val sshCommands = mutableMapOf<String, SshFunction>()
+    private val boshCommands = mutableMapOf<String, BoshFunction>()
 
-    fun registerSsh(environmentNames: Array<String>, sshCommand: (String, String?) -> Unit) {
-        environmentNames.forEach {
-            registerSsh(it, sshCommand)
+    private val environments = mutableMapOf<String, EnvironmentInfo>()
+
+    fun registerSsh(environmentName: String, environmentNickname: String, sshMethod: SshFunction) {
+        sshCommands.put(environmentName, sshMethod)
+        sshCommands.put(environmentNickname, sshMethod)
+
+        if (environments.containsKey(environmentName)) {
+            environments[environmentName]?.supportsSsh = true
+            return
+        }
+
+        environments[environmentName] = buildEnvironmentInfo(environmentName, environmentNickname).apply {
+            supportsSsh = true
         }
     }
 
-    private fun registerSsh(environmentName: String, sshCommand: (String, String?) -> Unit) {
-        sshCommands.put(environmentName, sshCommand)
+    fun registerBosh(environmentName: String, environmentNickname: String, boshMethod: BoshFunction) {
+        boshCommands.put(environmentName, boshMethod)
+        boshCommands.put(environmentNickname, boshMethod)
+
+        if (environments.containsKey(environmentName)) {
+            environments[environmentName]?.supportsBosh = true
+            return
+        }
+
+        environments[environmentName] = buildEnvironmentInfo(environmentName, environmentNickname).apply {
+            supportsBosh = true
+        }
     }
 
     fun build(): (args: Array<String>) -> Unit {
         val sshOptions = SshOptions()
         val boshOptions = BoshOptions()
+        val listEnvironmentsOptions = ListEnvironmentsOptions()
 
         val jc: JCommander = JCommander
             .newBuilder()
             .addCommand("ssh", sshOptions)
             .addCommand("bosh", boshOptions)
+            .addCommand("environments", listEnvironmentsOptions)
             .build()
 
         jc.programName = name
@@ -64,6 +103,18 @@ class ButlerBuilder {
                         return System.exit(1)
                     }
                 }
+                "environments" -> {
+                    println("Supported Commands by Environment")
+                    println("---------------------------------")
+                    environments.forEach { k, v ->
+                        val supportedEnvironments = listOf(
+                            Pair(v.supportsBosh, "bosh"),
+                            Pair(v.supportsSsh, "ssh")
+                        ).filter{ it.first }.map { it.second }
+
+                        println("$k:\t${supportedEnvironments.joinToString(", ")}")
+                    }
+                }
                 else -> {
                     jc.usage()
                     System.exit(1)
@@ -88,7 +139,7 @@ class ButlerBuilder {
             return false
         }
 
-        val command: ((String, String?) -> Unit)? = boshCommands[env]
+        val command: (SshFunction)? = boshCommands[env]
         if (command === null) {
             return false
         }
@@ -113,22 +164,12 @@ class ButlerBuilder {
             return false
         }
 
-        val command: ((String, String?) -> Unit)? = sshCommands[env]
+        val command: (SshFunction)? = sshCommands[env]
         if (command === null) {
             return false
         }
 
         command(vm, sshOptions.username)
         return true
-    }
-
-    fun registerBosh(environmentNames: Array<String>, boshMethod: (String, String?) -> Unit) {
-        environmentNames.forEach {
-            registerBosh(it, boshMethod)
-        }
-    }
-
-    private fun registerBosh(environmentName: String, boshMethod: (String, String?) -> Unit) {
-        boshCommands.put(environmentName, boshMethod)
     }
 }
