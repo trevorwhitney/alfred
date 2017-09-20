@@ -3,23 +3,29 @@ package butler
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider
 import org.springframework.core.annotation.AnnotationUtils
 import org.springframework.core.type.filter.AnnotationTypeFilter
+import org.springframework.core.type.filter.AssignableTypeFilter
 import java.lang.reflect.Method
 
 class Butler(val name: String) {
     private final val builder = ButlerBuilder().apply {
         this.name = name
     }
-    private final val scanner = ClassPathScanningCandidateComponentProvider(false)
 
     init {
-        scanner.addIncludeFilter(AnnotationTypeFilter(BoshEnvironment::class.java))
+        scanForBoshEnvironments()
+        scanForTasks()
+    }
 
-        scanner.findCandidateComponents("metrics").forEach {
+    private fun scanForBoshEnvironments() {
+        val boshEnvironmentScanner = ClassPathScanningCandidateComponentProvider(false)
+        boshEnvironmentScanner.addIncludeFilter(AnnotationTypeFilter(BoshEnvironment::class.java))
+
+        boshEnvironmentScanner.findCandidateComponents("metrics").forEach {
             val clazz = Class.forName(it.beanClassName)
             val instance = clazz.newInstance()
-            val commandCollection = AnnotationUtils.findAnnotation(clazz, BoshEnvironment::class.java)
-            val environmentName: String = AnnotationUtils.getValue(commandCollection, "name").toString()
-            val environmentNickname: String = AnnotationUtils.getValue(commandCollection, "nickname").toString()
+            val boshEnvironment = AnnotationUtils.findAnnotation(clazz, BoshEnvironment::class.java)
+            val environmentName: String = AnnotationUtils.getValue(boshEnvironment, "name").toString()
+            val environmentNickname: String = AnnotationUtils.getValue(boshEnvironment, "nickname").toString()
             val methods = clazz.declaredMethods
 
             methods.map {
@@ -34,6 +40,18 @@ class Butler(val name: String) {
                     addBoshMethod(it, environmentName, environmentNickname, instance)
                 }
             }
+        }
+    }
+
+    private fun scanForTasks() {
+        val taskScanner = ClassPathScanningCandidateComponentProvider(false)
+        taskScanner.addIncludeFilter(AssignableTypeFilter(Task::class.java))
+
+        taskScanner.findCandidateComponents("metrics").forEach {
+            val clazz = Class.forName(it.beanClassName)
+            val task: Task = clazz.newInstance() as Task
+
+            builder.registerTask(task)
         }
     }
 

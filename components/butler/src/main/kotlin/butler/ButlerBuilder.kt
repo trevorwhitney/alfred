@@ -3,20 +3,6 @@ package butler
 import com.beust.jcommander.JCommander
 import com.beust.jcommander.ParameterException
 
-data class EnvironmentInfo(
-    val name: String,
-    val nickname: String,
-    var supportsSsh: Boolean = false,
-    var supportsBosh: Boolean = false
-)
-
-fun buildEnvironmentInfo(name: String, nickname: String): EnvironmentInfo {
-    return EnvironmentInfo(
-        name = name,
-        nickname = nickname
-    )
-}
-
 typealias SshFunction = (String, String?) -> Unit
 typealias BoshFunction = (String, String?) -> Unit
 
@@ -24,6 +10,7 @@ class ButlerBuilder {
     var name: String? = null
     private val sshCommands = mutableMapOf<String, SshFunction>()
     private val boshCommands = mutableMapOf<String, BoshFunction>()
+    private val tasks = mutableMapOf<String, Task>()
 
     private val environments = mutableMapOf<String, EnvironmentInfo>()
 
@@ -60,11 +47,17 @@ class ButlerBuilder {
         val boshOptions = BoshOptions()
         val listEnvironmentsOptions = ListEnvironmentsOptions()
 
-        val jc: JCommander = JCommander
+        val builder = JCommander
             .newBuilder()
             .addCommand("ssh", sshOptions)
             .addCommand("bosh", boshOptions)
             .addCommand("environments", listEnvironmentsOptions)
+
+        tasks.forEach { k, v ->
+            builder.addCommand(k, v)
+        }
+
+        val jc: JCommander = builder
             .build()
 
         jc.programName = name
@@ -110,14 +103,23 @@ class ButlerBuilder {
                         val supportedEnvironments = listOf(
                             Pair(v.supportsBosh, "bosh"),
                             Pair(v.supportsSsh, "ssh")
-                        ).filter{ it.first }.map { it.second }
+                        ).filter { it.first }.map { it.second }
 
                         println("$k:\t${supportedEnvironments.joinToString(", ")}")
                     }
                 }
                 else -> {
-                    jc.usage()
-                    System.exit(1)
+                    if (!tasks.containsKey(jc.parsedCommand)) {
+                        jc.usage()
+                        return System.exit(1)
+                    }
+
+                    val task = tasks[jc.parsedCommand]
+                    if (task === null) {
+                        return System.exit(3)
+                    }
+
+                    task.run()
                 }
             }
         }
@@ -171,5 +173,9 @@ class ButlerBuilder {
 
         command(vm, sshOptions.username)
         return true
+    }
+
+    fun registerTask(task: Task) {
+        tasks.put(task.name, task)
     }
 }
