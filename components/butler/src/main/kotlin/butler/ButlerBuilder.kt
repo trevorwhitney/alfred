@@ -3,20 +3,20 @@ package butler
 import com.beust.jcommander.JCommander
 import com.beust.jcommander.ParameterException
 
-typealias SshFunction = (String, String?) -> Unit
-typealias BoshFunction = (String, String?) -> Unit
-
 class ButlerBuilder {
     var name: String? = null
-    private val sshCommands = mutableMapOf<String, SshFunction>()
-    private val boshCommands = mutableMapOf<String, BoshFunction>()
+    private val sshEnvironments = mutableMapOf<String, SshEnvironment>()
+    private val boshEnvironments = mutableMapOf<String, BoshEnvironment>()
     private val tasks = mutableMapOf<String, Task>()
 
     private val environments = mutableMapOf<String, EnvironmentInfo>()
 
-    fun registerSsh(environmentName: String, environmentNickname: String, sshMethod: SshFunction) {
-        sshCommands.put(environmentName, sshMethod)
-        sshCommands.put(environmentNickname, sshMethod)
+    fun registerSsh(sshEnvironment: SshEnvironment) {
+        val environmentName = sshEnvironment.name
+        val environmentNickname = sshEnvironment.nickname
+
+        sshEnvironments.put(environmentName, sshEnvironment)
+        sshEnvironments.put(environmentNickname, sshEnvironment)
 
         if (environments.containsKey(environmentName)) {
             environments[environmentName]?.supportsSsh = true
@@ -28,9 +28,12 @@ class ButlerBuilder {
         }
     }
 
-    fun registerBosh(environmentName: String, environmentNickname: String, boshMethod: BoshFunction) {
-        boshCommands.put(environmentName, boshMethod)
-        boshCommands.put(environmentNickname, boshMethod)
+    fun registerBosh(boshEnvironment: BoshEnvironment) {
+        val environmentName = boshEnvironment.name
+        val environmentNickname = boshEnvironment.nickname
+
+        boshEnvironments.put(environmentName, boshEnvironment)
+        boshEnvironments.put(environmentNickname, boshEnvironment)
 
         if (environments.containsKey(environmentName)) {
             environments[environmentName]?.supportsBosh = true
@@ -40,6 +43,10 @@ class ButlerBuilder {
         environments[environmentName] = buildEnvironmentInfo(environmentName, environmentNickname).apply {
             supportsBosh = true
         }
+    }
+
+    fun registerTask(task: Task) {
+        tasks.put(task.name, task)
     }
 
     fun build(): (args: Array<String>) -> Unit {
@@ -136,17 +143,17 @@ class ButlerBuilder {
             return false
         }
 
-        if (!boshCommands.containsKey(env)) {
+        if (!boshEnvironments.containsKey(env)) {
             println("$env environment does not support bosh actions")
             return false
         }
 
-        val command: (SshFunction)? = boshCommands[env]
-        if (command === null) {
+        val boshEnvironment = boshEnvironments[env]
+        if (boshEnvironment === null) {
             return false
         }
 
-        command(boshCommand, boshOptions.username)
+        boshEnvironment.bosh(boshCommand, boshOptions.deployment, boshOptions.username)
         return true
     }
 
@@ -161,21 +168,17 @@ class ButlerBuilder {
             return false
         }
 
-        if (!sshCommands.containsKey(env)) {
+        if (!sshEnvironments.containsKey(env)) {
             println("$env environment does not support ssh actions")
             return false
         }
 
-        val command: (SshFunction)? = sshCommands[env]
-        if (command === null) {
+        val sshEnvironment = sshEnvironments[env]
+        if (sshEnvironment === null) {
             return false
         }
 
-        command(vm, sshOptions.username)
+        sshEnvironment.ssh(vm, sshOptions.username)
         return true
-    }
-
-    fun registerTask(task: Task) {
-        tasks.put(task.name, task)
     }
 }

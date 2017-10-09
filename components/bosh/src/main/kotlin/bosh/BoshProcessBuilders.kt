@@ -6,8 +6,8 @@ import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermission
 import java.util.HashSet
 
-fun buildAndWaitForLocalBoshProcess(boshCommand: Array<String>, boshEnvironment: String, bblPath: Path) {
-    val processBuilder = buildLocalBoshProcess(boshCommand, boshEnvironment, bblPath)
+fun buildAndWaitForLocalBoshProcess(boshCommand: Array<String>, deployment: String?, bblPath: Path) {
+    val processBuilder = buildLocalBoshProcess(boshCommand, deployment, bblPath)
 
     val process = processBuilder
         .inheritIO()
@@ -16,7 +16,7 @@ fun buildAndWaitForLocalBoshProcess(boshCommand: Array<String>, boshEnvironment:
     process.waitFor()
 }
 
-private fun buildLocalBoshProcess(boshCommand: Array<String>, boshEnvironment: String, bblPath: Path): ProcessBuilder {
+private fun buildLocalBoshProcess(boshCommand: Array<String>, deployment: String?, bblPath: Path): ProcessBuilder {
     val (directorAddress,
         directorCaCert,
         directorUsername,
@@ -26,14 +26,18 @@ private fun buildLocalBoshProcess(boshCommand: Array<String>, boshEnvironment: S
         gatewayPrivateKey
         ) = loadDirectorConfig(bblPath.toString())
 
-    val command = listOf(
+    val command = mutableListOf<String>(
         "bosh",
         "-e", directorAddress,
         "--ca-cert", directorCaCert,
         "--client", directorUsername,
         "--client-secret", directorPassword,
-        "-d", boshEnvironment,
         *boshCommand)
+
+    if (deployment != null) {
+        command.addAll(listOf("-d", deployment))
+    }
+
     val processBuilder = ProcessBuilder()
         .command(command)
 

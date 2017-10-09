@@ -1,28 +1,23 @@
 package metrics
 
 import bosh.buildAndWaitForRemoteBoshProcess
-import butler.Bosh
-import butler.BoshEnvironment
-import butler.Ssh
+import butler.IncorrectUsageException
+import butler.SshEnvironment
+import metrics.Prod.Companion.prodRemoteCommand
 
-@BoshEnvironment("metrics-edge", nickname = "me")
-class MetricsEdge {
-    @Ssh
-    fun ssh(vm: String, username: String) {
+class MetricsEdge : SshEnvironment {
+    override val name = "metrics-edge"
+    override val nickname = "me"
+
+    override fun ssh(vm: String, username: String?) {
+        if (username == null) {
+            throw IncorrectUsageException("$name environment requires a username")
+        }
+
         buildAndWaitForRemoteBoshProcess(
             username,
             System.getenv("PROD_HOST"),
             prodRemoteCommand("pcf-metrics-edge", "ssh $vm")
         )
-    }
-
-    @Bosh
-    fun bosh(boshCommand: String, username: String) {
-        buildAndWaitForRemoteBoshProcess(
-            username,
-            System.getenv("PROD_HOST"),
-            prodRemoteCommand("pcf-metrics-edge", boshCommand)
-        )
-
     }
 }

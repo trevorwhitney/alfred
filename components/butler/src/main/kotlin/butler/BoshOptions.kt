@@ -9,6 +9,9 @@ class BoshOptions {
     @Parameter(names = arrayOf("--username", "-u"), description = "Username for remote server, if required")
     var username: String? = null
 
+    @Parameter(names = arrayOf("-d", "--deployment"), description = "Bosh deployment to run command against")
+    var deployment: String? = null
+
     @Parameter(names = arrayOf("-c", "--command"), description = "Bosh command to run", required = true)
     var command: String? = null
 }
