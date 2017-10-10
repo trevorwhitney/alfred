@@ -16,7 +16,7 @@ fun buildAndWaitForLocalBoshProcess(boshCommand: Array<String>, deployment: Stri
     process.waitFor()
 }
 
-private fun buildLocalBoshProcess(boshCommand: Array<String>, deployment: String?, bblPath: Path): ProcessBuilder {
+fun buildLocalBoshProcess(boshCommand: Array<String>, deployment: String?, bblPath: Path): ProcessBuilder {
     val (directorAddress,
         directorCaCert,
         directorUsername,
@@ -29,7 +29,6 @@ private fun buildLocalBoshProcess(boshCommand: Array<String>, deployment: String
     val command = mutableListOf<String>(
         "bosh",
         "-e", directorAddress,
-        "--ca-cert", directorCaCert,
         "--client", directorUsername,
         "--client-secret", directorPassword,
         *boshCommand)
@@ -42,6 +41,7 @@ private fun buildLocalBoshProcess(boshCommand: Array<String>, deployment: String
         .command(command)
 
     val environment = processBuilder.environment()
+    environment.put("BOSH_CA_CERT", directorCaCert)
     environment.put("BOSH_GW_USER", gatewayUser)
     environment.put("BOSH_GW_HOST", gatewayHost)
 
