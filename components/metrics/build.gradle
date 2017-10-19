@@ -3,4 +3,8 @@ apply from: "$project.rootDir/kotlin.gradle"
 dependencies {
     compile project(":components:butler")
     compile project(":components:bosh")
+
+    compile 'org.flywaydb:flyway-core:4.2.0'
+    compile 'mysql:mysql-connector-java:5.1.6'
+    compile 'postgresql:postgresql:9.4.1208-jdbc42-atlassian-hosted'
 }
